@@ -1,13 +1,94 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <script src="https://npmcdn.com/babel-core@5.8.38/browser.min.js"></script>
+     <script src="/socket.io/socket.io.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-core/5.8.34/browser.min.js"></script>
     <script type="text/babel" >
         "use strict";
-    
+        
+        let canvas;
+        
+        let socket;
+        
+        let mouseX;
+
+        let mouseY;
+
+        let ctx;
+
+        let square = {
+             width:20,
+             height:20,
+        };
+
+        let draws = {};
+        
+        //on click of canvas, draw a square
+        const onclick = () => {
+            let time = new Date().getTime();
+            let drawsquare = {x:mouseX,y:mouseY,width:square.width,height:square.height};
+            draws[time] = drawsquare
+            socket.emit('draw',{time:time,draw:drawsquare});
+            console.log("sending data");
+        };
+
+       
+        //whenever we get a new shape from the server, put in draw array and draw it
+        const draw = () => {
+            ctx.clearRect(0,0,canvas.width,canvas.height);
+            
+            let keys = Object.keys(draws);
+            console.log(draws);
+            for(let i =0;i<keys.length;i++)
+            {
+                const drawCall = draws[keys[i]];
+                ctx.fillStyle = "blue";
+                ctx.fillRect(drawCall.x,drawCall.y,drawCall.width,drawCall.height);
+            
+            }
+            
+            
+        }
+        
+        //get mouse movement 
+        const getmousemove = (canvas,evt) => {
+           let rect = canvas.getBoundingClientRect();
+            return{
+              x: evt.clientX - rect.left,
+              y: evt.clientY - rect.top
+            };
+        };
+        
+        const init = () => {
+          canvas = document.querySelector("#myCanvas");
+        
+          ctx = canvas.getContext("2d");
+            
+          socket = io.connect(); 
+        
+          //track mouse location
+          canvas.addEventListener("mousemove", function(evt) {
+             var mousePos = getmousemove(canvas,evt); 
+             mouseX = mousePos.x;
+             mouseY = mousePos.y;
+             //console.log("mousePos:X " + mouseX + " Y: " + mouseY);
+          },false);
+            
+          canvas.addEventListener('click',onclick); 
+            
+           //when the update comes back draw a square
+        socket.on('updatedraws',(data) => {
+           draws[data.time] = data.draw;
+           draw();
+           console.log("getting data back");
+            
+        });
+        };
+        
+        window.onload = init;
     </script>
 </head>
 <body>
-
+    <canvas id="myCanvas" width="500" height="500"style="border:1px solid #000000;"></canvas>
 </body>
 </html>
